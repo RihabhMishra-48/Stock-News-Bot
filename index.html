@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Live Stock Tracker</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <style>
+        /* 🎨 Modern Dark Theme */
+        body {
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            background-color: #121212;
+            color: white;
+            margin: 50px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        /* 🔎 Input & Button */
+        input {
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            outline: none;
+            background: #1e1e1e;
+            color: white;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border: 2px solid #00aaff;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #00aaff;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #0088cc;
+            transform: scale(1.05);
+        }
+
+        /* 📈 Stock Data Section */
+        #stockData, #sentiment {
+            margin-top: 20px;
+            font-size: 22px;
+            font-weight: bold;
+            transition: 0.5s;
+        }
+
+        /* 📰 News Section */
+        #newsContainer {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #1e1e1e;
+            box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .news-item {
+            font-size: 16px;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            transition: 0.3s;
+        }
+
+        .news-item:hover {
+            background: #292929;
+            transform: scale(1.02);
+        }
+
+        /* ✅ Sentiment Colors */
+        .bullish {
+            color: #00ff00;
+        }
+
+        .bearish {
+            color: #ff4d4d;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📈 Live Stock Price Tracker 📉</h1>
+    
+    <input type="text" id="ticker" placeholder="Enter Stock Ticker">
+    <button onclick="subscribeStock()">Get Live Data</button>
+
+    <div id="stockData">Stock Price: -</div>
+    <div id="sentiment">Market Sentiment: -</div>
+
+    <div id="newsContainer">
+        <h2>🗞️ Latest News</h2>
+        <div id="newsList">Search for the latest news for your ticker</div>
+    </div>
+
+    <script>
+        var socket = io.connect('https://stock-news-botpython-bot-py.onrender.com', { transports: ["websocket", "polling"] });
+
+        function subscribeStock() {
+            let ticker = document.getElementById("ticker").value.toUpperCase();
+            if (ticker === "") {
+                alert("⚠️ Please enter a stock ticker!");
+                return;
+            }
+            console.log(`🔍 Subscribing to stock: ${ticker}`);
+            socket.emit("subscribe_stock", { ticker: ticker });
+        }
+
+        socket.on('connect', function () {
+            console.log("✅ WebSocket Connected Successfully!");
+        });
+
+        socket.on('stock_update', function (data) {
+            console.log("📡 Data Received from Server:", data);
+
+            if (data.price) {
+                document.getElementById("stockData").innerText = "Stock Price: $" + data.price;
+                document.getElementById("stockData").style.color = "#00ff00";
+            }
+            if (data.sentiment) {
+                let sentimentText = "Market Sentiment: " + data.sentiment;
+                let sentimentColor = data.sentiment === "Bullish" ? "bullish" : "bearish";
+                document.getElementById("sentiment").innerHTML = `<span class="${sentimentColor}">${sentimentText}</span>`;
+            }
+            if (data.news && data.news.length > 0) {
+                console.log("📰 News Received:", data.news);
+                let newsHtml = data.news.map(news => `<div class='news-item'>${news}</div>`).join('');
+                document.getElementById("newsList").innerHTML = newsHtml;
+            } else {
+                console.log("⚠️ No news received.");
+                document.getElementById("newsList").innerHTML = "No recent news available.";
+            }
+        });
+        setInterval(() => {
+        socket.emit("ping", { msg: "keepalive" });
+        }, 25000); // Every 25 seconds
+
+
+    </script>
+
+</body>
+</html>
